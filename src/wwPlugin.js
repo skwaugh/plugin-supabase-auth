@@ -71,11 +71,11 @@ export default {
         if (!this.privateInstance) throw new Error('Invalid Supabase Auth configuration.');
         const roles = this.settings.publicData.userRoleTable
             ? (
-                  await this.privateInstance
-                      .from(this.settings.publicData.userRoleTable)
-                      .select('role:roleId(*)')
-                      .eq('userId', userId)
-              ).data.map(({ role }) => role)
+                await this.privateInstance
+                    .from(this.settings.publicData.userRoleTable)
+                    .select('role:roleId(*)')
+                    .eq('userId', userId)
+            ).data.map(({ role }) => role)
             : [];
         return roles;
     },
@@ -202,22 +202,22 @@ export default {
                 },
                 localStorage: wwLib.manager
                     ? {
-                          getItem(key) {
-                              return wwLib
-                                  .getEditorWindow()
-                                  .localStorage.getItem(`${wwLib.wwWebsiteData.getInfo().id}.${key}`);
-                          },
-                          setItem(key, value) {
-                              wwLib
-                                  .getEditorWindow()
-                                  .localStorage.setItem(`${wwLib.wwWebsiteData.getInfo().id}.${key}`, value);
-                          },
-                          removeItem(key) {
-                              wwLib
-                                  .getEditorWindow()
-                                  .localStorage.removeItem(`${wwLib.wwWebsiteData.getInfo().id}.${key}`);
-                          },
-                      }
+                        getItem(key) {
+                            return wwLib
+                                .getEditorWindow()
+                                .localStorage.getItem(`${wwLib.wwWebsiteData.getInfo().id}.${key}`);
+                        },
+                        setItem(key, value) {
+                            wwLib
+                                .getEditorWindow()
+                                .localStorage.setItem(`${wwLib.wwWebsiteData.getInfo().id}.${key}`, value);
+                        },
+                        removeItem(key) {
+                            wwLib
+                                .getEditorWindow()
+                                .localStorage.removeItem(`${wwLib.wwWebsiteData.getInfo().id}.${key}`);
+                        },
+                    }
                     : undefined,
             });
 
@@ -254,7 +254,18 @@ export default {
     async signInEmail({ email, password }) {
         if (!this.publicInstance) throw new Error('Invalid Supabase Auth configuration.');
         try {
-            const { session, error } = await this.publicInstance.auth.signIn({ email, password });
+            const { session, error } = await this.publicInstance.auth.signInWithPassword({ email, password });
+            if (error) throw new Error(error.message, { cause: error });
+            return await this.refreshAuthUser(session);
+        } catch (err) {
+            this.signOut();
+            throw err;
+        }
+    },
+    async signInPhone({ phone, password }) {
+        if (!this.publicInstance) throw new Error('Invalid Supabase Auth configuration.');
+        try {
+            const { session, error } = await this.publicInstance.auth.signInWithPassword({ phone, password });
             if (error) throw new Error(error.message, { cause: error });
             return await this.refreshAuthUser(session);
         } catch (err) {
@@ -269,20 +280,34 @@ export default {
             const redirectTo = wwLib.manager
                 ? `${window.location.origin}/${websiteId}/${redirectPage}`
                 : `${window.location.origin}${wwLib.wwPageHelper.getPagePath(redirectPage)}`;
-            const { error } = await this.publicInstance.auth.signIn({ email }, { redirectTo });
+            const { error } = await this.publicInstance.auth.signInWithOtp({ email }, { redirectTo });
             if (error) throw new Error(error.message, { cause: error });
         } catch (err) {
             this.signOut();
             throw err;
         }
     },
-    async signInProvider({ provider, redirectPage }) {
+    async signInOtp({ email, redirectPage }) {
+        if (!this.publicInstance) throw new Error('Invalid Supabase Auth configuration.');
+        try {
+            const websiteId = wwLib.wwWebsiteData.getInfo().id;
+            const redirectTo = wwLib.manager
+                ? `${window.location.origin}/${websiteId}/${redirectPage}`
+                : `${window.location.origin}${wwLib.wwPageHelper.getPagePath(redirectPage)}`;
+            const { error } = await this.publicInstance.auth.signInWithOtp({ phone }, { redirectTo });
+            if (error) throw new Error(error.message, { cause: error });
+        } catch (err) {
+            this.signOut();
+            throw err;
+        }
+    },
+    async signInProvider({ provider, redirectPage, queryParams }) {
         if (!this.publicInstance) throw new Error('Invalid Supabase Auth configuration.');
         const websiteId = wwLib.wwWebsiteData.getInfo().id;
         const redirectTo = wwLib.manager
             ? `${window.location.origin}/${websiteId}/${redirectPage}`
             : `${window.location.origin}${wwLib.wwPageHelper.getPagePath(redirectPage)}`;
-        const { error } = await this.publicInstance.auth.signIn({ provider }, { redirectTo });
+        const { error } = await this.publicInstance.auth.signInWithOAuth({ provider }, { redirectTo }, { queryParams });
         if (error) throw new Error(error.message, { cause: error });
     },
     async signUp({ email, password, metadata, redirectPage }) {
@@ -360,11 +385,11 @@ export default {
         if (!this.publicInstance) throw new Error('Invalid Supabase Auth configuration.');
         const roles = this.settings.publicData.userRoleTable
             ? (
-                  await this.publicInstance
-                      .from(this.settings.publicData.userRoleTable)
-                      .select('role:roleId(*)')
-                      .eq('userId', userId)
-              ).data.map(({ role }) => role)
+                await this.publicInstance
+                    .from(this.settings.publicData.userRoleTable)
+                    .select('role:roleId(*)')
+                    .eq('userId', userId)
+            ).data.map(({ role }) => role)
             : [];
         return roles;
     },
